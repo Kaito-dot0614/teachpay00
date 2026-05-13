@@ -379,9 +379,20 @@ function TCal({sessions,saveSess,rate}){
     const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     return sessions.filter(s=>s.date===ds);
   };
-  const handleSave=data=>{
-    if(edit)saveSess(sessions.map(s=>s.id===edit.id?{...s,...data}:s));
-    else saveSess([...sessions,{id:`s${Date.now()}`,status:"scheduled",actualStart:null,actualEnd:null,...data}]);
+  const handleSave=async data=>{
+    if(edit){
+      saveSess(sessions.map(s=>s.id===edit.id?{...s,...data}:s));
+    } else {
+      const newSession={id:`s${Date.now()}`,status:"scheduled",actualStart:null,actualEnd:null,...data};
+      saveSess([...sessions,newSession]);
+      try{
+        await loadGoogleApi();
+        await addToGoogleCalendar(newSession);
+        alert('Googleカレンダーに追加しました！');
+      } catch(e){
+        console.error(e);
+      }
+    }
     setModal(false);setEdit(null);
   };
   const mSess=sessions.filter(s=>s.date.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`)).sort((a,b)=>a.date.localeCompare(b.date));
