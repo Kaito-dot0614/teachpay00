@@ -1,3 +1,46 @@
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const CALENDAR_ID = 'primary';
+const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+
+function loadGoogleApi() {
+  return new Promise(resolve => {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = resolve;
+    document.body.appendChild(script);
+  });
+}
+
+async function addToGoogleCalendar(session) {
+  const dt = new Date(session.date + 'T' + session.startTime);
+  const dtEnd = new Date(session.date + 'T' + session.endTime);
+  const studentName = USERS[session.studentId]?.name || '';
+
+  return new Promise((resolve, reject) => {
+    google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: SCOPES,
+      callback: async (tokenResponse) => {
+        if (tokenResponse.error) { reject(tokenResponse); return; }
+        const event = {
+          summary: `授業 - ${studentName}`,
+          description: session.subjects?.join('・') || '',
+          start: { dateTime: dt.toISOString(), timeZone: 'Asia/Tokyo' },
+          end: { dateTime: dtEnd.toISOString(), timeZone: 'Asia/Tokyo' },
+        };
+        const res = await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${CALENDAR_ID}/events`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${tokenResponse.access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(event),
+          }
+        );
+        if (res.ok) resolve(await res.json());
+        else rej
 import { useState, useEffect, useRef } from "react";
 
 async function sGet(k){try{const v=localStorage.getItem(k);return v?JSON.parse(v):null;}catch{return null;}}
