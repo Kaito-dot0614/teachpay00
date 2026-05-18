@@ -34,6 +34,47 @@ const today=()=>new Date().toISOString().slice(0,10);
 const fmtDate=d=>{const dt=new Date(d+"T00:00:00");return`${dt.getMonth()+1}/${dt.getDate()}(${WDAYS[dt.getDay()]})`;};
 const nowHHMM=()=>{const n=new Date();return`${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`;};
 
+const GOOGLE_CLIENT_ID=import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+function loadGoogleApi(){
+  return new Promise(resolve=>{
+    if(window.google){resolve();return;}
+    const s=document.createElement('script');
+    s.src='https://accounts.google.com/gsi/client';
+    s.onload=resolve;
+    document.body.appendChild(s);
+  });
+}
+
+async function addToGoogleCalendar(session){
+  const dt=new Date(session.date+'T'+session.startTime);
+  const dtEnd=new Date(session.date+'T'+session.endTime);
+  const studentName=USERS[session.studentId]?.name||'';
+  await loadGoogleApi();
+  return new Promise((resolve,reject)=>{
+    const client=window.google.accounts.oauth2.initTokenClient({
+      client_id:GOOGLE_CLIENT_ID,
+      scope:'https://www.googleapis.com/auth/calendar.events',
+      callback:async tokenResponse=>{
+        if(tokenResponse.error){reject(tokenResponse);return;}
+        const event={
+          summary:`授業 - ${studentName}`,
+          description:session.subjects?.join('・')||'',
+          start:{dateTime:dt.toISOString(),timeZone:'Asia/Tokyo'},
+          end:{dateTime:dtEnd.toISOString(),timeZone:'Asia/Tokyo'},
+        };
+        const res=await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {method:'POST',headers:{Authorization:`Bearer ${tokenResponse.access_token}`,'Content-Type':'application/json'},body:JSON.stringify(event)}
+        );
+        if(res.ok)resolve(await res.json());
+        else reject(await res.json());
+      },
+    });
+    client.requestAccessToken();
+  });
+}
+
 function IcoHome(){return(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 11L12 3l9 8v10a1 1 0 01-1 1H5a1 1 0 01-1-1V11z"/><path d="M9 22V13h6v9"/></svg>);}
 function IcoCal(){return(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><circle cx="8" cy="16" r=".8" fill="currentColor" stroke="none"/><circle cx="12" cy="16" r=".8" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r=".8" fill="currentColor" stroke="none"/></svg>);}
 function IcoClock(){return(<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>);}
@@ -336,9 +377,18 @@ function TCal({sessions,saveSess,rate}){
     const ds=`${yr}-${String(mo+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
     return sessions.filter(s=>s.date===ds);
   };
-  const handleSave=data=>{
-    if(edit)saveSess(sessions.map(s=>s.id===edit.id?{...s,...data}:s));
-    else saveSess([...sessions,{id:`s${Date.now()}`,status:"scheduled",actualStart:null,actualEnd:null,...data}]);
+  const handleSave=async data=>{
+    if(edit){
+      saveSess(sessions.map(s=>s.id===edit.id?{...s,...data}:s));
+    } else {
+      const newSession={id:`s${Date.now()}`,status:"scheduled",actualStart:null,actualEnd:null,...data};
+      saveSess([...sessions,newSession]);
+      try{
+        await addToGoogleCalendar(newSession);
+      } catch(e){
+        console.error('Google Calendar error:',e);
+      }
+    }
     setModal(false);setEdit(null);
   };
   const mSess=sessions.filter(s=>s.date.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`)).sort((a,b)=>a.date.localeCompare(b.date));
