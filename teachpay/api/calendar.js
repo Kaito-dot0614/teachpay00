@@ -47,5 +47,5 @@ async function getAccessToken(email, privateKey) {
   const signature = await signRS256(signingInput, privateKey);
   const jwt = `${signingInput}.${signature}`;
   const params = new URLSearchParams();
-  params.append('grant_type',
-} 
+  params.append('grant_type',)
+  } 
