@@ -48,3 +48,4 @@ async function getAccessToken(email, privateKey) {
   const jwt = `${signingInput}.${signature}`;
   const params = new URLSearchParams();
   params.append('grant_type',
+} 
