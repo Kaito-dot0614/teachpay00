@@ -62,6 +62,9 @@ async function getAccessToken(email, privateKey) {
     body: `grant_type=urn:ietf:params:oauth2:grant_type:jwt-bearer&assertion=${jwt}`,
   });
   const tokenData = await tokenRes.json();
+  if(!tokenData.access_token){
+    throw new Error('Token error: ' + JSON.stringify(tokenData));
+  }
   return tokenData.access_token;
 }
 
