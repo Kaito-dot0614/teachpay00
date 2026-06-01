@@ -143,7 +143,7 @@ async function fetchCalendarEvents(){
     const res=await fetch('/api/calendar');
     if(!res.ok)throw new Error('fetch failed');
     const data=await res.json();
-    return(data.events||[]).map(parseEvent).filter(e=>e.studentId&&e.date&&e.startTime&&e.endTime);
+    return(data.events||[]).flatMap(parseEvent).filter(e=>e.studentId&&e.date&&e.startTime&&e.endTime);
   }catch(e){
     console.error(e);
     return[];
