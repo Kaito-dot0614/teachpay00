@@ -1,24 +1,31 @@
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
-  if (req.method === 'OPTIONS') { res.status(200).end(); return; }
 
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
   const calendarId = process.env.VITE_CALENDAR_ID;
 
-  try {
-    const now = new Date();
-    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-    const threeMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, 1).toISOString();
+  if(!email) return res.status(500).json({error:'GOOGLE_SERVICE_ACCOUNT_EMAIL not set'});
+  if(!key) return res.status(500).json({error:'GOOGLE_PRIVATE_KEY not set'});
+  if(!calendarId) return res.status(500).json({error:'VITE_CALENDAR_ID not set'});
 
+  try {
     const token = await getAccessToken(email, key);
+    if(!token) return res.status(500).json({error:'Failed to get access token'});
+
+    const now = new Date();
+    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
+    const threeMonthsLater = new Date(now.getFullYear(), now.getMonth()+3, 1).toISOString();
+
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${oneMonthAgo}&timeMax=${threeMonthsLater}&singleEvents=true&orderBy=startTime`;
 
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     });
+
     const data = await response.json();
+
+    if(data.error) return res.status(500).json({error: data.error});
 
     const events = (data.items || []).map(e => ({
       id: e.id,
@@ -30,7 +37,7 @@ export default async function handler(req, res) {
 
     res.status(200).json({ events });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message, stack: err.stack });
   }
 }
 
