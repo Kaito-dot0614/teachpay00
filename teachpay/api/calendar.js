@@ -22,47 +22,4 @@ export default async function handler(req, res) {
       end:e.end?.dateTime||e.end?.date,
       description:e.description||'',
     }));
-    res.status(200).json({events});
-  } catch(err) {
-    res.status(500).json({error:err.message});
-  }
-}
-
-async function getAccessToken(email, privateKey) {
-  const header = btoa(JSON.stringify({alg:'RS256',typ:'JWT'}));
-  const now = Math.floor(Date.now()/1000);
-  const claim = btoa(JSON.stringify({
-    iss:email,
-    scope:'https://www.googleapis.com/auth/calendar.readonly',
-    aud:'https://oauth2.googleapis.com/token',
-    exp:now+3600,
-    iat:now,
-  }));
-  const input = `${header}.${claim}`;
-  const sig = await signRS256(input, privateKey);
-  const jwt = `${input}.${sig}`;
-  const params = new URLSearchParams();
-  params.append('grant_type','urn:ietf:params:oauth2:grant_type:jwt-bearer');
-  params.append('assertion',jwt);
-  const r = await fetch('https://oauth2.googleapis.com/token',{
-    method:'POST',
-    headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:params.toString(),
-  });
-  const d = await r.json();
-  if(!d.access_token) throw new Error('Token failed: '+JSON.stringify(d));
-  return d.access_token;
-}
-
-async function signRS256(input, pem) {
-  const body = pem.replace(/-----[^-]+-----/g,'').replace(/\s/g,'');
-  const der = Uint8Array.from(atob(body),c=>c.charCodeAt(0));
-  const key = await crypto.subtle.importKey(
-    'pkcs8',der.buffer,
-    {name:'RSASSA-PKCS1-v1_5',hash:'SHA-256'},
-    false,['sign']
-  );
-  const buf = await crypto.subtle.sign('RSASSA-PKCS1-v1_5',key,new TextEncoder().encode(input));
-  return btoa(String.fromCharCode(...new Uint8Array(buf)))
-    .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-}
+    res.status(200).json({events})
