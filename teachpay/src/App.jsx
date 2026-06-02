@@ -12,28 +12,41 @@ const STUDENT_NAMES=["りな","れな","わたる"];
 const SCOL={りな:"#B85450",れな:"#3D6E9E",わたる:"#5A7A3A"};
 const WDAYS=["日","月","火","水","木","金","土"];
 const MONTHS=Array.from({length:12},(_,i)=>`${i+1}月`);
-const DEFAULT_RATE=2000;
+const DEFAULT_RATE=1500;
 
 // Googleカレンダーのイベントタイトルから生徒名を抽出
-// 例: "りな 数学 15:00-16:30" → {studentId:"りな", subjects:["数学"]}
+// 例: "りな 数学" → 1件、"りなれな 数学" → りな・れな各1件
 function parseEvent(event){
   const title=event.title||"";
   const desc=event.description||"";
-  let studentId=null;
-  for(const name of STUDENT_NAMES){
-    if(title.includes(name)||desc.includes(name)){studentId=name;break;}
-  }
   const subjects=["数学","英語","国語","理科","社会","その他"].filter(s=>title.includes(s)||desc.includes(s));
   const start=event.start?new Date(event.start):null;
   const end=event.end?new Date(event.end):null;
   const date=start?start.toISOString().slice(0,10):null;
   const startTime=start?`${String(start.getHours()).padStart(2,"0")}:${String(start.getMinutes()).padStart(2,"0")}`:null;
   const endTime=end?`${String(end.getHours()).padStart(2,"0")}:${String(end.getMinutes()).padStart(2,"0")}`:null;
-  return{id:event.id,studentId,subjects,date,startTime,endTime,status:"scheduled",actualStart:startTime,actualEnd:endTime,title};
+  const matched=STUDENT_NAMES.filter(name=>title.includes(name)||desc.includes(name));
+  if(matched.length===0)return[];
+  return matched.map(studentId=>({
+    id:`${event.id}_${studentId}`,
+    studentId,subjects,date,startTime,endTime,
+    startISO:event.start,endISO:event.end,
+    status:"scheduled",title
+  }));
 }
 
 const toMin=t=>{if(!t)return 0;const[h,m]=t.split(":").map(Number);return h*60+m;};
-const diffMin=(s,e)=>{const d=toMin(e)-toMin(s);return d>0?d:0;};
+const diffMin=(s,e,sDate,eDate)=>{
+  // 日付情報がある場合は正確なms差分で計算
+  if(sDate&&eDate){
+    const ms=new Date(eDate)-new Date(sDate);
+    if(ms>0)return Math.round(ms/60000);
+  }
+  // 時刻のみの場合（日跨ぎ考慮）
+  let d=toMin(e)-toMin(s);
+  if(d<0)d+=24*60;
+  return d>0?d:0;
+};
 const fmtDur=m=>{const h=Math.floor(m/60),mm=m%60;return h>0?`${h}時間${mm>0?mm+"分":""}`:`${mm}分`;};
 const fmtYen=n=>`¥${n.toLocaleString()}`;
 const calcPay=(mins,rate)=>Math.round((mins/60)*rate);
@@ -264,7 +277,7 @@ function THome({sessions,rate}){
   const td=today();const now=new Date();
   const upcoming=sessions.filter(s=>s.date>=td).sort((a,b)=>a.date.localeCompare(b.date));
   const mSess=sessions.filter(s=>{const d=new Date(s.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
-  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
+  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
   const soon=upcoming.filter(s=>(new Date(s.date)-new Date(td))/86400000<=2);
   return(
     <>
@@ -359,11 +372,11 @@ function SalView({sessions,rate}){
   const[yr,setYr]=useState(now.getFullYear());
   const[mo,setMo]=useState(now.getMonth());
   const mSess=sessions.filter(s=>s.date.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`));
-  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
+  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
   const mPay=calcPay(mMins,rate);
   const byS=STUDENT_NAMES.map(id=>{
     const ss=mSess.filter(s=>s.studentId===id);
-    const mins=ss.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
+    const mins=ss.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
     return{id,mins,p:calcPay(mins,rate)};
   });
   return(
@@ -463,11 +476,11 @@ function PSalary({sessions,rate}){
   const[yr,setYr]=useState(now.getFullYear());
   const[mo,setMo]=useState(now.getMonth());
   const mSess=sessions.filter(s=>s.date.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`));
-  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
-  const total=sessions.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
+  const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
+  const total=sessions.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
   const byS=STUDENT_NAMES.map(id=>{
     const ss=mSess.filter(s=>s.studentId===id);
-    const mins=ss.reduce((a,s)=>a+diffMin(s.startTime,s.endTime),0);
+    const mins=ss.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
     return{id,mins,p:calcPay(mins,rate)};
   });
   return(
@@ -505,7 +518,7 @@ function PSalary({sessions,rate}){
 
 function SR({s,rate,showPay}){
   const col=SCOL[s.studentId]||"#888";
-  const mins=diffMin(s.startTime,s.endTime);
+  const mins=diffMin(s.startTime,s.endTime,s.startISO,s.endISO);
   return(
     <div className="sr">
       <div className="sr-top">
