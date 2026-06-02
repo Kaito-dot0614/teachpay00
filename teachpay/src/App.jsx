@@ -5,8 +5,8 @@ async function sSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 
 const USERS={
   かいと:  {id:"かいと",  name:"かいと",  role:"tutor",   pw:"kaito0614"},
-  かなこ:  {id:"かなこ",  name:"かなこ",  role:"parent",  pw:"iikana3"},
-  よしゆき:{id:"よしゆき",name:"よしゆき",role:"parent",  pw:"iiyoshi3"},
+  かなこ:  {id:"かなこ",  name:"かなこ",  role:"parent",  pw:"0708"},
+  よしゆき:{id:"よしゆき",name:"よしゆき",role:"parent",  pw:"0526"},
 };
 const STUDENT_NAMES=["りな","れな","わたる"];
 const SCOL={りな:"#B85450",れな:"#3D6E9E",わたる:"#5A7A3A"};
