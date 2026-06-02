@@ -281,7 +281,7 @@ function THome({sessions,rate}){
     <>
       <div className="hint">
         <div className="hint-ttl">予定の登録方法</div>
-        Googleカレンダー「TeachPay」に予定を追加してください。<br/>
+        Googleカレンダー「レッスン日程管理」に予定を追加してください。<br/>
         タイトル例：<strong>りな 数学</strong>　または　<strong>れな 英語 国語</strong>
       </div>
       <div className="hero">
