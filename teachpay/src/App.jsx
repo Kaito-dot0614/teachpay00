@@ -194,9 +194,7 @@ export default function App(){
       <style>{CSS}</style>
       {!user
         ?<Login onLogin={setUser}/>
-        :user.role==="tutor"
-          ?<TutorApp user={user} sessions={sessions} rate={rate} saveRate={saveRate} onReload={loadData} onLogout={()=>setUser(null)}/>
-          :<ParentApp user={user} sessions={sessions} rate={rate} onReload={loadData} onLogout={()=>setUser(null)}/>
+        :<TutorApp user={user} sessions={sessions} rate={rate} saveRate={saveRate} onReload={loadData} onLogout={()=>setUser(null)}/>
       }
     </>
   );
