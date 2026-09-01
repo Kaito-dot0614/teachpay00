@@ -5,8 +5,8 @@ async function sSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
 
 const USERS={
   かいと:  {id:"かいと",  name:"かいと",  role:"tutor",   pw:"kaito0614"},
-  かなこ:  {id:"かなこ",  name:"かなこ",  role:"parent",  pw:"0708"},
-  よしゆき:{id:"よしゆき",name:"よしゆき",role:"parent",  pw:"0526"},
+  かなこ:  {id:"かなこ",  name:"かなこ",  role:"parent",  pw:"iikana3"},
+  よしゆき:{id:"よしゆき",name:"よしゆき",role:"parent",  pw:"iiyoshi3"},
 };
 const STUDENT_NAMES=["りな","れな","わたる"];
 const SCOL={りな:"#B85450",れな:"#3D6E9E",わたる:"#5A7A3A"};
@@ -281,7 +281,7 @@ function THome({sessions,rate}){
     <>
       <div className="hint">
         <div className="hint-ttl">予定の登録方法</div>
-        Googleカレンダー「レッスン日程管理」に予定を追加してください。<br/>
+        Googleカレンダー「TeachPay」に予定を追加してください。<br/>
         タイトル例：<strong>りな 数学</strong>　または　<strong>れな 英語 国語</strong>
       </div>
       <div className="hero">
@@ -369,7 +369,17 @@ function SalView({sessions,rate}){
   const now=new Date();
   const[yr,setYr]=useState(now.getFullYear());
   const[mo,setMo]=useState(now.getMonth());
-  const mSess=sessions.filter(s=>s.date.startsWith(`${yr}-${String(mo+1).padStart(2,"0")}`));
+  const[received,setReceived]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem("received")||"{}");}catch{return{};}
+  });
+  const monthKey=`${yr}-${String(mo+1).padStart(2,"0")}`;
+  const isReceived=!!received[monthKey];
+  const toggleReceived=()=>{
+    const next={...received,[monthKey]:!isReceived};
+    setReceived(next);
+    localStorage.setItem("received",JSON.stringify(next));
+  };
+  const mSess=sessions.filter(s=>s.date.startsWith(monthKey));
   const mMins=mSess.reduce((a,s)=>a+diffMin(s.startTime,s.endTime,s.startISO,s.endISO),0);
   const mPay=calcPay(mMins,rate);
   const byS=STUDENT_NAMES.map(id=>{
@@ -388,6 +398,23 @@ function SalView({sessions,rate}){
         <div className="hero-lbl">今月の合計給料</div>
         <div className="hero-amt">{fmtYen(mPay)}</div>
         <div className="hero-sub">{fmtDur(mMins)} × {fmtYen(rate)}/h</div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--white)",border:"1px solid var(--line)",borderRadius:12,padding:"12px 14px",marginBottom:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div style={{width:8,height:8,borderRadius:"50%",background:isReceived?"var(--green)":"var(--amber)",flexShrink:0}}/>
+          <span style={{fontSize:13,fontWeight:600,color:isReceived?"var(--green)":"var(--amber)"}}>
+            {isReceived?"受取済み":"未受取"}
+          </span>
+        </div>
+        <button onClick={toggleReceived} style={{
+          padding:"5px 12px",borderRadius:7,border:"1px solid",
+          borderColor:isReceived?"var(--line2)":"var(--green)",
+          background:isReceived?"var(--bg)":"var(--green-bg)",
+          color:isReceived?"var(--ink2)":"var(--green)",
+          fontSize:11,fontWeight:600,cursor:"pointer",fontFamily:"inherit"
+        }}>
+          {isReceived?"未受取に戻す":"受取済みにする"}
+        </button>
       </div>
       <div className="g2">
         {byS.filter(b=>b.mins>0).map(b=>(
