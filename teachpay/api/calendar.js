@@ -19,7 +19,7 @@ export default async function handler(req, res) {
 
     const calendar = google.calendar({version:'v3', auth});
     const now = new Date();
-    const min = new Date(now.getFullYear(), now.getMonth()-1, 1).toISOString();
+    const min = new Date(now.getFullYear()-1, 0, 1).toISOString();
     const max = new Date(now.getFullYear(), now.getMonth()+3, 1).toISOString();
 
     const r = await calendar.events.list({
